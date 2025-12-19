@@ -3,3 +3,5 @@ orjsonl
 tqdm
 nltk
 plotnine
+hashstash[rec]
+stanza

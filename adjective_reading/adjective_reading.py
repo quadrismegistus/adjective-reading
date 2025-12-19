@@ -1,6 +1,7 @@
 
 import os
 import orjsonl
+from collections import defaultdict, Counter
 from tqdm import tqdm
 import nltk
 import re
@@ -10,6 +11,8 @@ import warnings
 warnings.filterwarnings('ignore')
 import plotnine as p9
 from tqdm import tqdm
+
+PERIOD_CUTOFFS = [1920, 1960, 1980, 1990, 2000, 2010, 2020]
 
 PATH_CORPUS = '/Users/ryan/github/ordinary-style-philosophy/data/raw/LitStudiesJSTOR.jsonl'
 MIN_WORDS = 3
@@ -289,3 +292,47 @@ def detokenize_and_uppercase(doc, token='reading', token_ids=[]):
     return ''.join(out)
 
 # detokenize_and_uppercase(sentdoc, token_ids=[])
+
+
+
+def periodize(y, cutoffs=PERIOD_CUTOFFS, include_before=False, include_after=False):
+    cutoffs.sort()
+    mincut = cutoffs[0]
+    maxcut = cutoffs[-1]
+    if y < mincut:
+        return f'{mincut}-{cutoffs[0]}' if include_before else f''
+    elif y > maxcut:
+        return f'{cutoffs[-1]}-' if include_after else f''
+
+    for i in range(len(cutoffs)-1):
+        if y < cutoffs[i+1]:
+            return f'{cutoffs[i]}-{cutoffs[i+1]}'
+    return f'{cutoffs[-1]}-' if include_after else f''
+
+
+URL2YEAR = None
+URL2DECADE = None
+DECADE2URLS = None
+
+def get_url2year():
+    global URL2YEAR
+    if URL2YEAR is None:
+        URL2YEAR = {d['url']:d['publicationYear'] for d in tqdm(orjsonl.stream(PATH_CORPUS), total=CORPUS_NUM_SENTS, desc="Loading url2year...")}
+    return URL2YEAR
+
+def get_url2decade():
+    global URL2DECADE
+    if URL2DECADE is None:
+        URL2DECADE = {url:year//10*10 for url,year in get_url2year().items()}
+    return URL2DECADE
+
+def get_decade2urls():
+    global DECADE2URLS
+    if DECADE2URLS is None:
+        DECADE2URLS = defaultdict(list)
+        for url,decade in get_url2decade().items():
+            DECADE2URLS[decade].append(url)
+    return DECADE2URLS
+        
+def get_url_period(url, cutoffs=PERIOD_CUTOFFS):
+    return periodize(get_url2year()[url], cutoffs=cutoffs)
